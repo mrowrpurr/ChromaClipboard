@@ -35,6 +35,12 @@ This is the result after pressing `Ctrl+Shift+K`:
 
 ![Image with chroma keyed background](Resources/screenshots/chroma-keyed.png)
 
+> Note: you might see that too much green is replaced.
+>
+> This isn't purrfect yet, but it's a start!
+>
+> This is good enough for my current use-case.
+
 # License
 
 Use however, no attribution required.
