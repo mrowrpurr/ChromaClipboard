@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "chroma-clipboard"
+version = "0.1.0"
+description = "Performs chroma key background removal of image in the system clipboard."
+authors = ["Mrowr Purr <mrowr.purr@gmail.com>"]
+license = "0BSD"
+readme = "README.md"
+
+[tool.poetry.scripts]
+app = "chroma_clipboard.app:main"
+
+[tool.poe.tasks]
+qrc = "pyside6-rcc -o chroma_clipboard/resources_rc.py Resources/resources.qrc"
+build-exe = "pyinstaller --onefile --windowed --noconfirm --name \"Chroma Clipboard\" --icon resources/icon.ico chroma_clipboard/__main__.py"
+
+[tool.poetry.dependencies]
+python = "3.13"
+pyside6 = "^6.8.1"
+pillow = "^11.0.0"
+keyboard = "^0.13.5"
+pywin32 = "^308"
+numpy = "^2.2.0"
+opencv-python-headless = "^4.10.0.84"
+
+
+[tool.poetry.group.dev.dependencies]
+poethepoet = "^0.31.1"
+pyinstaller = "^6.11.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
