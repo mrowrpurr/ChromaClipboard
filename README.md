@@ -25,6 +25,16 @@ The release provided is specifically for `#22FF00`
 
 > This will be configurable in the future
 
+# Example
+
+If I'm making a tutorial and I have this image in my clipboard:
+
+![Image with green background](Resources/screenshots/green.png)
+
+This is the result after pressing `Ctrl+Shift+K`:
+
+![Image with chroma keyed background](Resources/screenshots/chroma-keyed.png)
+
 # License
 
 Use however, no attribution required.
