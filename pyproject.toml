@@ -14,14 +14,13 @@ qrc = "pyside6-rcc -o chroma_clipboard/resources_rc.py Resources/resources.qrc"
 build-exe = "pyinstaller --onefile --windowed --noconfirm --name \"Chroma Clipboard\" --icon resources/icon.ico chroma_clipboard/__main__.py"
 
 [tool.poetry.dependencies]
-python = "3.13"
+python = ">=3.11,<3.12"
 pyside6 = "^6.8.1"
 pillow = "^11.0.0"
 keyboard = "^0.13.5"
 pywin32 = "^308"
-numpy = "^2.2.0"
 opencv-python-headless = "^4.10.0.84"
-
+numpy = "^2.0.2"
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.31.1"
