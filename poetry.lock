@@ -3470,6 +3470,17 @@ files = [
 ]
 
 [[package]]
+name = "qasync"
+version = "0.27.1"
+description = "Python library for using asyncio in Qt-based applications"
+optional = false
+python-versions = ">=3.8,<4.0"
+files = [
+    {file = "qasync-0.27.1-py3-none-any.whl", hash = "sha256:5d57335723bc7d9b328dadd8cb2ed7978640e4bf2da184889ce50ee3ad2602c7"},
+    {file = "qasync-0.27.1.tar.gz", hash = "sha256:8dc768fd1ee5de1044c7c305eccf2d39d24d87803ea71189d4024fb475f4985f"},
+]
+
+[[package]]
 name = "setuptools"
 version = "75.6.0"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
@@ -3505,4 +3516,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.12"
-content-hash = "ffef753c31cc543e9c2b48e421ff023775bd939ec72c0426d8514f9ef187e4d5"
+content-hash = "4a87816d82d91bce78a11746540d165c59d8548d4decaeb56c19b5bd21d58ce7"

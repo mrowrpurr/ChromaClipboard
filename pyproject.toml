@@ -21,6 +21,7 @@ keyboard = "^0.13.5"
 pywin32 = "^308"
 opencv-python-headless = "^4.10.0.84"
 numpy = "^2.0.2"
+qasync = "^0.27.1"
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.31.1"
