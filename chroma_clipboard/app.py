@@ -1,10 +1,11 @@
-import sys
 import io
+import sys
+
+import cv2
 import keyboard
+import numpy as np
 import win32clipboard  # For clipboard management
 from PIL import Image, ImageGrab
-import numpy as np
-import cv2
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
@@ -14,10 +15,59 @@ from chroma_clipboard.resources_rc import qt_resource_data
 QRC = qt_resource_data # To prevent import from being optimized away
 
 # Globals for configuration
-CHROMA_KEY_LOWER_BOUND = (50, 100, 100)  # Lower HSV bounds for green screen
-CHROMA_KEY_UPPER_BOUND = (90, 255, 255)  # Upper HSV bounds for green screen
 BLUR_KERNEL_SIZE = (15, 15)  # Gaussian blur kernel size
-MORPH_KERNEL_SIZE = (5, 5)  # Morphology kernel size
+
+MORPH_KERNEL_SIZE = 3  # Smaller morphology kernel for finer detail preservation
+
+# Updated Globals for chroma key
+CHROMA_KEY_LOWER_BOUND = (50, 180, 110)  # Lower HSV bounds for green screen
+CHROMA_KEY_UPPER_BOUND = (78, 255, 255)  # Upper HSV bounds for green screen
+
+def refined_chroma_key(image: Image.Image) -> Image.Image:
+    """
+    Refined chroma keying to remove green backgrounds while including #41BE2E in transparency.
+
+    Args:
+        image: Input PIL Image.
+
+    Returns:
+        A PIL Image with the background fully removed for target green.
+    """
+    # Convert to OpenCV format
+    image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGBA2BGR)
+    hsv = cv2.cvtColor(image_cv, cv2.COLOR_BGR2HSV)
+
+    # Create mask for target chroma key greens
+    main_mask = cv2.inRange(hsv, np.array(CHROMA_KEY_LOWER_BOUND), np.array(CHROMA_KEY_UPPER_BOUND))
+
+    # Preserve foreground
+    foreground_mask = cv2.bitwise_not(main_mask)
+    foreground = cv2.bitwise_and(image_cv, image_cv, mask=foreground_mask)
+
+    # Create alpha channel: Full transparency for green areas
+    alpha = cv2.bitwise_not(main_mask)
+
+    # Merge channels with alpha channel
+    r, g, b = cv2.split(foreground)
+    result_rgba = cv2.merge((r, g, b, alpha))
+
+    # Convert back to PIL Image
+    return Image.fromarray(cv2.cvtColor(result_rgba, cv2.COLOR_BGRA2RGBA))
+
+
+# Replace `advanced_chroma_key` with `refined_chroma_key` in `process_screenshot`
+def process_screenshot():
+    """
+    Processes the clipboard screenshot using refined OpenCV-based chroma keying.
+    """
+    print("Processing screenshot with refined chroma key...")
+    image = ImageGrab.grabclipboard()
+    if image is not None:
+        print("Image found in clipboard")
+        processed_image = refined_chroma_key(image)
+        replace_clipboard_with_image(processed_image)
+    else:
+        print("No image found in clipboard.")
 
 
 def advanced_chroma_key(image: Image.Image) -> Image.Image:
@@ -87,18 +137,18 @@ def replace_clipboard_with_image(image: Image.Image):
     print("Clipboard updated successfully with PNG format.")
 
 
-def process_screenshot():
-    """
-    Processes the clipboard screenshot using OpenCV-based chroma keying.
-    """
-    print("Processing screenshot with OpenCV chroma key...")
-    image = ImageGrab.grabclipboard()
-    if image is not None:
-        print("Image found in clipboard")
-        processed_image = advanced_chroma_key(image)
-        replace_clipboard_with_image(processed_image)
-    else:
-        print("No image found in clipboard.")
+# def process_screenshot():
+#     """
+#     Processes the clipboard screenshot using OpenCV-based chroma keying.
+#     """
+#     print("Processing screenshot with OpenCV chroma key...")
+#     image = ImageGrab.grabclipboard()
+#     if image is not None:
+#         print("Image found in clipboard")
+#         processed_image = advanced_chroma_key(image)
+#         replace_clipboard_with_image(processed_image)
+#     else:
+#         print("No image found in clipboard.")
 
 
 class TrayApp(QApplication):
