@@ -25,6 +25,14 @@ The release provided is specifically for `#22FF00`
 
 > This will be configurable in the future
 
+## Screenshot
+
+![Image containing color code #22FF00](Resources/before.png)
+
+## Replacement!
+
+![Image with green screen replaced](Resources/after.png)
+
 # License
 
 Use however, no attribution required.
