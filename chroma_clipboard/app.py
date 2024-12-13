@@ -1,4 +1,5 @@
 import io
+import os
 import sys
 
 import cv2
@@ -25,7 +26,7 @@ CHROMA_KEY_UPPER_BOUND = (78, 255, 255)  # Upper HSV bounds for green screen
 
 def refined_chroma_key(image: Image.Image) -> Image.Image:
     """
-    Refined chroma keying to remove green backgrounds while including #41BE2E in transparency.
+    Refined chroma keying to remove green backgrounds without spill suppression.
 
     Args:
         image: Input PIL Image.
@@ -33,81 +34,79 @@ def refined_chroma_key(image: Image.Image) -> Image.Image:
     Returns:
         A PIL Image with the background fully removed for target green.
     """
-    # Convert to OpenCV format
-    image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGBA2BGR)
-    hsv = cv2.cvtColor(image_cv, cv2.COLOR_BGR2HSV)
+    try:
+        # Ensure the image is in RGBA mode
+        image = image.convert("RGBA")
 
-    # Create mask for target chroma key greens
-    main_mask = cv2.inRange(hsv, np.array(CHROMA_KEY_LOWER_BOUND), np.array(CHROMA_KEY_UPPER_BOUND))
+        # Convert to OpenCV format
+        image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGBA2BGR)
+        hsv = cv2.cvtColor(image_cv, cv2.COLOR_BGR2HSV)
 
-    # Preserve foreground
-    foreground_mask = cv2.bitwise_not(main_mask)
-    foreground = cv2.bitwise_and(image_cv, image_cv, mask=foreground_mask)
+        # Create mask for target chroma key greens
+        main_mask = cv2.inRange(hsv, np.array(CHROMA_KEY_LOWER_BOUND), np.array(CHROMA_KEY_UPPER_BOUND))
 
-    # Create alpha channel: Full transparency for green areas
-    alpha = cv2.bitwise_not(main_mask)
+        # Preserve foreground
+        foreground_mask = cv2.bitwise_not(main_mask)
+        foreground = cv2.bitwise_and(image_cv, image_cv, mask=foreground_mask)
 
-    # Merge channels with alpha channel
-    r, g, b = cv2.split(foreground)
-    result_rgba = cv2.merge((r, g, b, alpha))
+        # Create alpha channel: Full transparency for green areas
+        alpha = cv2.bitwise_not(main_mask)
 
-    # Convert back to PIL Image
-    return Image.fromarray(cv2.cvtColor(result_rgba, cv2.COLOR_BGRA2RGBA))
+        # Merge channels with alpha channel
+        r, g, b = cv2.split(foreground)
+        result_rgba = cv2.merge((r, g, b, alpha))
+
+        # Convert back to PIL Image
+        return Image.fromarray(cv2.cvtColor(result_rgba, cv2.COLOR_BGRA2RGBA))
+
+    except Exception as e:
+        print(f"Error processing image: {e}")
+        raise
 
 
-# Replace `advanced_chroma_key` with `refined_chroma_key` in `process_screenshot`
 def process_screenshot():
     """
-    Processes the clipboard screenshot using refined OpenCV-based chroma keying.
+    Processes the clipboard screenshot using OpenCV-based chroma keying.
     """
-    print("Processing screenshot with refined chroma key...")
-    image = ImageGrab.grabclipboard()
-    if image is not None:
+    print("Processing screenshot with OpenCV chroma key...")
+    try:
+        image = get_image_from_clipboard()
         print("Image found in clipboard")
         processed_image = refined_chroma_key(image)
         replace_clipboard_with_image(processed_image)
-    else:
-        print("No image found in clipboard.")
+    except ValueError as e:
+        print(f"Failed to process screenshot: {e}")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
 
 
-def advanced_chroma_key(image: Image.Image) -> Image.Image:
+def get_image_from_clipboard() -> Image.Image:
     """
-    Optimized chroma keying with minimal foreground erosion and refined edge handling.
-
-    Args:
-        image: Input PIL Image.
+    Retrieves the image from the clipboard, ensuring it is valid and in a compatible format.
 
     Returns:
-        A PIL Image with the background removed.
+        A PIL Image in RGBA mode.
+
+    Raises:
+        ValueError: If the clipboard does not contain an image.
     """
-    # Convert to OpenCV format
-    image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGBA2BGR)
-    hsv = cv2.cvtColor(image_cv, cv2.COLOR_BGR2HSV)
+    clipboard_data = ImageGrab.grabclipboard()
 
-    # Create mask for green
-    mask = cv2.inRange(hsv, np.array(CHROMA_KEY_LOWER_BOUND), np.array(CHROMA_KEY_UPPER_BOUND))
+    if isinstance(clipboard_data, list):
+        # If the clipboard contains file paths, try to open the first one
+        file_path = clipboard_data[0] if clipboard_data else None
+        if file_path and os.path.isfile(file_path):
+            print(f"Clipboard contains file path: {file_path}")
+            return Image.open(file_path).convert("RGBA")
 
-    # Edge refinement (less aggressive)
-    mask_blurred = cv2.GaussianBlur(mask, BLUR_KERNEL_SIZE, 0)
-    mask_refined = cv2.morphologyEx(mask_blurred, cv2.MORPH_CLOSE, np.ones(MORPH_KERNEL_SIZE, np.uint8))
+    if clipboard_data is None:
+        raise ValueError("No image found in clipboard.")
 
-    # Preserve original foreground detail
-    foreground_mask = cv2.bitwise_not(mask_refined)  # Invert mask for foreground
-    foreground = cv2.bitwise_and(image_cv, image_cv, mask=foreground_mask)
+    if not isinstance(clipboard_data, Image.Image):
+        raise ValueError("Clipboard data is not a valid image.")
 
-    # Spill suppression: Adjust green spill without affecting edges
-    r, g, b = cv2.split(foreground)
-    green_spill_mask = (g > r) & (g > b) & (g > 100)
-    g[green_spill_mask] = (r[green_spill_mask] + b[green_spill_mask]) // 2  # Suppress green
-
-    # Create alpha channel
-    alpha = cv2.bitwise_not(mask_refined)
-
-    # Merge channels with adjusted alpha
-    result_rgba = cv2.merge((r, g, b, alpha))
-
-    # Convert back to PIL Image
-    return Image.fromarray(cv2.cvtColor(result_rgba, cv2.COLOR_BGRA2RGBA))
+    # Ensure the image is in RGBA mode
+    return clipboard_data.convert("RGBA")
 
 
 def replace_clipboard_with_image(image: Image.Image):
@@ -135,20 +134,6 @@ def replace_clipboard_with_image(image: Image.Image):
         win32clipboard.CloseClipboard()
 
     print("Clipboard updated successfully with PNG format.")
-
-
-# def process_screenshot():
-#     """
-#     Processes the clipboard screenshot using OpenCV-based chroma keying.
-#     """
-#     print("Processing screenshot with OpenCV chroma key...")
-#     image = ImageGrab.grabclipboard()
-#     if image is not None:
-#         print("Image found in clipboard")
-#         processed_image = advanced_chroma_key(image)
-#         replace_clipboard_with_image(processed_image)
-#     else:
-#         print("No image found in clipboard.")
 
 
 class TrayApp(QApplication):
