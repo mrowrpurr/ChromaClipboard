@@ -26,49 +26,135 @@ CHROMA_KEY_UPPER_BOUND = (90, 255, 255)  # Upper HSV bounds for green screen
 BLUR_KERNEL_SIZE = 15  # Gaussian blur kernel size
 MORPH_KERNEL_SIZE = 5  # Morphology kernel size
 
-def advanced_chroma_key(image: Image.Image, lower_bound, upper_bound, blur_kernel, morph_kernel, alpha_scale=1.0) -> Image.Image:
+# def advanced_chroma_key(image: Image.Image, lower_bound, upper_bound, blur_kernel, morph_kernel, alpha_scale=1.0) -> Image.Image:
+#     """
+#     Advanced chroma keying using OpenCV with adjustable intensity.
+
+#     Args:
+#         image: Input PIL Image.
+#         lower_bound: Lower HSV bounds for chroma key.
+#         upper_bound: Upper HSV bounds for chroma key.
+#         blur_kernel: Gaussian blur kernel size.
+#         morph_kernel: Morphology kernel size.
+#         alpha_scale: Scaling factor for blending transparency.
+
+#     Returns:
+#         A PIL Image with the background partially removed based on the mask.
+#     """
+#     # Convert PIL Image to OpenCV format (RGBA -> BGR)
+#     image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGBA2BGR)
+#     hsv = cv2.cvtColor(image_cv, cv2.COLOR_BGR2HSV)
+
+#     # Create a smooth mask
+#     mask = cv2.inRange(hsv, lower_bound, upper_bound).astype(np.float32)
+#     mask = mask / 255.0  # Normalize to [0, 1]
+
+#     # Apply Gaussian blur for smooth transitions
+#     mask = cv2.GaussianBlur(mask, (blur_kernel, blur_kernel), 0)
+
+#     # Spill suppression and edge refinement
+#     morph_kernel = (morph_kernel, morph_kernel)
+#     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones(morph_kernel, np.uint8))
+
+#     # Scale mask for alpha blending
+#     mask_scaled = (mask * alpha_scale).astype(np.float32)
+#     alpha_channel = (1 - mask_scaled) * 255
+
+#     # Perform blending using NumPy
+#     result = image_cv * (1 - mask_scaled[:, :, None])  # Preserve non-masked areas
+#     result = result.astype(np.uint8)
+
+#     # Add alpha channel from the mask
+#     result_rgba = cv2.cvtColor(result, cv2.COLOR_BGR2BGRA)
+#     result_rgba[:, :, 3] = alpha_channel.astype(np.uint8)
+
+#     # Convert back to PIL Image
+#     return Image.fromarray(cv2.cvtColor(result_rgba, cv2.COLOR_BGRA2RGBA))
+
+# def advanced_chroma_key(image: Image.Image, lower_bound, upper_bound, blur_kernel, morph_kernel, alpha_scale=1.0) -> Image.Image:
+#     """
+#     Advanced chroma keying with smooth transitions and proper alpha handling.
+
+#     Args:
+#         image: Input PIL Image.
+#         lower_bound: Lower HSV bounds for chroma key.
+#         upper_bound: Upper HSV bounds for chroma key.
+#         blur_kernel: Gaussian blur kernel size.
+#         morph_kernel: Morphology kernel size.
+#         alpha_scale: Scaling factor for blending transparency.
+
+#     Returns:
+#         A PIL Image with the background partially removed.
+#     """
+#     # Convert PIL Image to OpenCV format (RGBA -> BGR)
+#     image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGBA2BGR)
+#     hsv = cv2.cvtColor(image_cv, cv2.COLOR_BGR2HSV)
+
+#     # Create a smooth mask
+#     mask = cv2.inRange(hsv, lower_bound, upper_bound).astype(np.float32)
+#     mask = mask / 255.0  # Normalize to [0, 1]
+
+#     # Apply Gaussian blur for smooth transitions
+#     mask = cv2.GaussianBlur(mask, (blur_kernel, blur_kernel), 0)
+
+#     # Spill suppression and edge refinement
+#     morph_kernel = (morph_kernel, morph_kernel)
+#     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones(morph_kernel, np.uint8))
+
+#     # Scale mask for alpha blending
+#     mask_scaled = (mask * alpha_scale).astype(np.float32)
+
+#     # Apply alpha blending
+#     result = cv2.addWeighted(image_cv, 1.0 - mask_scaled, np.zeros_like(image_cv), 0, 0)
+
+#     # Add alpha channel from mask
+#     result = cv2.cvtColor(result, cv2.COLOR_BGR2BGRA)
+#     result[:, :, 3] = (mask * 255).astype(np.uint8)
+
+#     # Convert back to PIL Image
+#     return Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGRA2RGBA))
+
+def advanced_chroma_key(image: Image.Image, lower_bound, upper_bound, blur_kernel, morph_kernel) -> Image.Image:
     """
-    Advanced chroma keying using OpenCV with adjustable intensity.
+    Advanced chroma keying with adjustable parameters.
 
     Args:
         image: Input PIL Image.
-        lower_bound: Lower HSV bounds for chroma key.
-        upper_bound: Upper HSV bounds for chroma key.
+        lower_bound: Lower HSV bounds for the chroma key.
+        upper_bound: Upper HSV bounds for the chroma key.
         blur_kernel: Gaussian blur kernel size.
         morph_kernel: Morphology kernel size.
-        alpha_scale: Scaling factor for blending transparency.
 
     Returns:
-        A PIL Image with the background partially removed based on the mask.
+        A PIL Image with the background removed.
     """
-    # Convert PIL Image to OpenCV format (RGBA -> BGR)
     image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGBA2BGR)
     hsv = cv2.cvtColor(image_cv, cv2.COLOR_BGR2HSV)
 
-    # Create a smooth mask
-    mask = cv2.inRange(hsv, lower_bound, upper_bound).astype(np.float32)
-    mask = mask / 255.0  # Normalize to [0, 1]
+    # Create mask for green
+    mask = cv2.inRange(hsv, np.array(lower_bound), np.array(upper_bound))
 
-    # Apply Gaussian blur for smooth transitions
-    mask = cv2.GaussianBlur(mask, (blur_kernel, blur_kernel), 0)
+    # Edge refinement
+    blur_size = (blur_kernel, blur_kernel)
+    mask_blurred = cv2.GaussianBlur(mask, blur_size, 0)
+    morph_size = (morph_kernel, morph_kernel)
+    mask_refined = cv2.morphologyEx(mask_blurred, cv2.MORPH_CLOSE, np.ones(morph_size, np.uint8))
 
-    # Spill suppression and edge refinement
-    morph_kernel = (morph_kernel, morph_kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones(morph_kernel, np.uint8))
+    # Preserve original foreground detail
+    foreground_mask = cv2.bitwise_not(mask_refined)
+    foreground = cv2.bitwise_and(image_cv, image_cv, mask=foreground_mask)
 
-    # Scale mask for alpha blending
-    mask_scaled = (mask * alpha_scale).astype(np.float32)
-    alpha_channel = (1 - mask_scaled) * 255
+    # Spill suppression
+    r, g, b = cv2.split(foreground)
+    green_spill_mask = (g > r) & (g > b) & (g > 100)
+    g[green_spill_mask] = (r[green_spill_mask] + b[green_spill_mask]) // 2
 
-    # Perform blending using NumPy
-    result = image_cv * (1 - mask_scaled[:, :, None])  # Preserve non-masked areas
-    result = result.astype(np.uint8)
+    # Create alpha channel
+    alpha = cv2.bitwise_not(mask_refined)
 
-    # Add alpha channel from the mask
-    result_rgba = cv2.cvtColor(result, cv2.COLOR_BGR2BGRA)
-    result_rgba[:, :, 3] = alpha_channel.astype(np.uint8)
+    # Merge channels with adjusted alpha
+    result_rgba = cv2.merge((r, g, b, alpha))
 
-    # Convert back to PIL Image
     return Image.fromarray(cv2.cvtColor(result_rgba, cv2.COLOR_BGRA2RGBA))
 
 
@@ -107,8 +193,9 @@ class ChromaKeyWindow(QWidget):
 
     def add_controls(self):
         # Chroma Key Color
-        self.color_input = QLineEdit("#22FF00")
-        self.color_input.setPlaceholderText("Chroma Key Color (#RRGGBB)")
+        # self.color_input = QLineEdit("128600,21fa00,128901,052b00,1a5215")
+        self.color_input = QLineEdit("22ff00")
+        self.color_input.setPlaceholderText("Chroma Key Color(s) (#RRGGBB)")
         self.color_input.textChanged.connect(self.update_preview)
         self.controls_layout.addWidget(QLabel("Chroma Key Color"))
         self.controls_layout.addWidget(self.color_input)
@@ -117,7 +204,7 @@ class ChromaKeyWindow(QWidget):
         self.tolerance_slider = QSlider(Qt.Horizontal)
         self.tolerance_slider.setMinimum(0)
         self.tolerance_slider.setMaximum(100)
-        self.tolerance_slider.setValue(50)
+        self.tolerance_slider.setValue(20)
         self.tolerance_slider.valueChanged.connect(self.update_preview)
         self.controls_layout.addWidget(QLabel("Tolerance"))
         self.controls_layout.addWidget(self.tolerance_slider)
@@ -125,7 +212,7 @@ class ChromaKeyWindow(QWidget):
         # Blur Kernel Size
         self.blur_spinbox = QSpinBox()
         self.blur_spinbox.setMinimum(1)
-        self.blur_spinbox.setMaximum(50)
+        self.blur_spinbox.setMaximum(100)
         self.blur_spinbox.setValue(BLUR_KERNEL_SIZE)
         self.blur_spinbox.valueChanged.connect(self.update_preview)
         self.controls_layout.addWidget(QLabel("Blur Kernel Size"))
@@ -134,7 +221,7 @@ class ChromaKeyWindow(QWidget):
         # Morph Kernel Size
         self.morph_spinbox = QSpinBox()
         self.morph_spinbox.setMinimum(1)
-        self.morph_spinbox.setMaximum(50)
+        self.morph_spinbox.setMaximum(100)
         self.morph_spinbox.setValue(MORPH_KERNEL_SIZE)
         self.morph_spinbox.valueChanged.connect(self.update_preview)
         self.controls_layout.addWidget(QLabel("Morph Kernel Size"))
@@ -150,43 +237,49 @@ class ChromaKeyWindow(QWidget):
     def update_preview(self):
         """Updates the preview based on current settings."""
         try:
-            # Parse Chroma Key Color
-            color_code = self.color_input.text()
-            if color_code.startswith("#"):
-                color_code = color_code[1:]
-            chroma_key_color = tuple(int(color_code[i:i+2], 16) for i in (0, 2, 4))
+            self.preview_image = self.original_image.copy()
 
-            # Convert RGB to HSV
-            color_rgb = np.uint8([[chroma_key_color]])
-            color_hsv = cv2.cvtColor(color_rgb, cv2.COLOR_RGB2HSV)[0][0]
+            color_codes = [code.strip().lstrip('#') for code in self.color_input.text().split(',')]
 
-            # Tolerance and HSV Bounds
-            tolerance = self.tolerance_slider.value()
-            if tolerance == 0:
-                # No replacement: Show the original image
-                self.preview_image = self.original_image.copy()
-                print("Tolerance is 0: Showing original image")
-            else:
-                # Dynamically adjust the bounds
-                lower_bound = np.array([
-                    max(0, int(color_hsv[0]) - tolerance % 180),  # Hue
-                    max(0, int(color_hsv[1]) - (tolerance * 4)),  # Saturation
-                    max(0, int(color_hsv[2]) - (tolerance * 4)),  # Value
-                ])
-                upper_bound = np.array([
-                    min(180, int(color_hsv[0]) + tolerance % 180),  # Hue
-                    min(255, int(color_hsv[1]) + (tolerance * 4)),  # Saturation
-                    min(255, int(color_hsv[2]) + (tolerance * 4)),  # Value
-                ])
-                print("Lower Bound (HSV):", lower_bound)
-                print("Upper Bound (HSV):", upper_bound)
+            for color_code in color_codes:
+                chroma_key_color = tuple(int(color_code[i:i+2], 16) for i in (0, 2, 4))
 
-                # Apply Chroma Key with smoother transitions
-                processed_image = advanced_chroma_key(
-                    self.original_image, lower_bound, upper_bound,
-                    self.blur_spinbox.value(), self.morph_spinbox.value(), alpha_scale=1.0 - (tolerance / 100)
-                )
-                self.preview_image = processed_image
+                # Convert RGB to HSV
+                color_rgb = np.uint8([[chroma_key_color]])
+                color_hsv = cv2.cvtColor(color_rgb, cv2.COLOR_RGB2HSV)[0][0]
+
+                # Tolerance and HSV Bounds
+                tolerance = self.tolerance_slider.value()
+                print("Tolerance:", tolerance)
+
+                if tolerance > 0:
+                    # Dynamically adjust the bounds
+                    lower_bound = np.array([
+                        max(0, int(color_hsv[0]) - tolerance % 180),  # Hue
+                        max(0, int(color_hsv[1]) - (tolerance * 4)),  # Saturation
+                        max(0, int(color_hsv[2]) - (tolerance * 4)),  # Value
+                    ])
+                    upper_bound = np.array([
+                        min(180, int(color_hsv[0]) + tolerance % 180),  # Hue
+                        min(255, int(color_hsv[1]) + (tolerance * 4)),  # Saturation
+                        min(255, int(color_hsv[2]) + (tolerance * 4)),  # Value
+                    ])
+                    print("Lower Bound (HSV):", lower_bound)
+                    print("Upper Bound (HSV):", upper_bound)
+
+                    # Apply Chroma Key with smoother transitions
+                    self.preview_image = advanced_chroma_key(
+                        self.preview_image, lower_bound, upper_bound,
+                        self.blur_spinbox.value(), self.morph_spinbox.value() #, alpha_scale=1.0 - (tolerance / 100)
+                    )
+
+            # Replace fully transparent pixels with pure red
+            # preview_array = np.array(self.preview_image)
+            # transparent_mask = preview_array[:, :, 3] == 0  # Alpha channel is 0
+            # preview_array[transparent_mask] = [255, 0, 0, 255]  # Set to red (RGBA: [255, 0, 0, 255])
+
+            # # Convert the modified array back to a PIL Image
+            # self.preview_image = Image.fromarray(preview_array, "RGBA")
 
             # Update Preview Image
             qt_image = ImageQt(self.preview_image).convertToFormat(QImage.Format_ARGB32)
@@ -197,7 +290,8 @@ class ChromaKeyWindow(QWidget):
         except Exception as e:
             print(f"Error updating preview: {e}")
 
-
+        except Exception as e:
+            print(f"Error updating preview: {e}")
 
     def copy_to_clipboard(self):
         """Copies the processed image to the clipboard."""
@@ -252,6 +346,7 @@ class TrayApp(QApplication):
         self.chroma_window = ChromaKeyWindow()
         self.chroma_window.show()
         self.chroma_window.activateWindow()
+        self.chroma_window.raise_()
 
 
 def signal_handler(sig, frame):
@@ -278,3 +373,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# #22FF00 at 20 tolerance
+# 2d5f26 at 20 tolerance
